@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.clojars.brenden</groupId>
     <artifactId>storm-amqp-spout</artifactId>
-    <version>0.2.7-SNAPSHOT</version>
+    <version>0.2.8-SNAPSHOT</version>
 
     <name>Storm AMQP Spout</name>
     <description>AMQP input source for Storm</description>

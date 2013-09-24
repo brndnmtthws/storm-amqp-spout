@@ -126,6 +126,7 @@ public class AMQPSpout implements IRichSpout {
     private SpoutOutputCollector collector;
 
     private int prefetchCount;
+    private long lastAck;
 
 
 
@@ -185,6 +186,8 @@ public class AMQPSpout implements IRichSpout {
         this.autoAck = autoAck;
 
         this.serialisationScheme = scheme;
+
+        this.lastAck = 0;
     }
 
 
@@ -195,13 +198,17 @@ public class AMQPSpout implements IRichSpout {
     public void ack(Object msgId) {
         if (msgId instanceof Long) {
             final long deliveryTag = (Long) msgId;
-            if (amqpChannel != null) {
-                try {
-                    amqpChannel.basicAck(deliveryTag, false /* not multiple */);
-                } catch (IOException e) {
-                    log.warn("Failed to ack delivery-tag " + deliveryTag, e);
-                } catch (ShutdownSignalException e) {
-                    log.warn("AMQP connection failed. Failed to ack delivery-tag " + deliveryTag, e);
+            if (amqpChannel != null && !autoAck) {
+                final long now = System.currentTimeMillis();
+                if (now - lastAck > 1000) {
+                    try {
+                        amqpChannel.basicAck(deliveryTag, true);
+                        lastAck = now;
+                    } catch (IOException e) {
+                        log.warn("Failed to ack delivery-tag " + deliveryTag, e);
+                    } catch (ShutdownSignalException e) {
+                        log.warn("AMQP connection failed. Failed to ack delivery-tag " + deliveryTag, e);
+                    }
                 }
             }
         } else {
@@ -378,7 +385,7 @@ public class AMQPSpout implements IRichSpout {
         final ConnectionFactory connectionFactory = new ConnectionFactory() {
             public void configureSocket(Socket socket)
                 throws IOException {
-                socket.setTcpNoDelay(false);
+                socket.setTcpNoDelay(true);
                 socket.setReceiveBufferSize(20*1024);
                 socket.setSendBufferSize(20*1024);
             }
